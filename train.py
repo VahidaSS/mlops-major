@@ -9,6 +9,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 import joblib
 import os
+import logging
 
 # Load dataset
 print("📥 Loading dataset...")
@@ -42,8 +43,9 @@ test_acc = accuracy_score(y_test, model.predict(X_test))
 print(f"✅ Training Accuracy: {train_acc:.4f}")
 print(f"✅ Testing Accuracy: {test_acc:.4f}")
 
+os.makedirs("artifacts", exist_ok=True)
 # Save model
-model_path = "savedmodel.pth"
+model_path = os.path.join("artifacts", "savedmodel.pth")
 joblib.dump(model, model_path)
 
 print(f"📦 Model saved at {model_path}")
