@@ -1,0 +1,50 @@
+name: MLOps CI Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  check_working_repo:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      # Step 3: Install dependencies
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      # Step 4: Run training script
+      - name: Run Training Script
+        run: |
+          python train.py
+
+      # Step 5: Run testing script
+      - name: Run Testing Script
+        run: |
+          python test.py
+
+      # Step 6: Upload model artifact (ADVANCED)
+      - name: Upload Model Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: trained-model
+          path: savedmodel.pth
+
+      # Step 7: Upload metrics file
+      - name: Upload Metrics
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics
+          path: metrics.txt
