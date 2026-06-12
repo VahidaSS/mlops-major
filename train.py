@@ -11,13 +11,13 @@ import joblib
 import os
 
 # Load dataset
-print("📥 Loading dataset...")
+print("Loading dataset...")
 data = fetch_olivetti_faces()
 X = data.data
 y = data.target
 
 # Split dataset (70-30)
-print("✂️ Splitting dataset...")
+print("Splitting dataset...")
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -26,8 +26,8 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y
 )
 
-# Initialize model (controlled for better generalization)
-print("🤖 Training model...")
+# Initialize model
+print("Training model...")
 model = DecisionTreeClassifier(
     max_depth=15,
     random_state=42
@@ -39,19 +39,16 @@ model.fit(X_train, y_train)
 train_acc = accuracy_score(y_train, model.predict(X_train))
 test_acc = accuracy_score(y_test, model.predict(X_test))
 
-print(f"✅ Training Accuracy: {train_acc:.4f}")
-print(f"✅ Testing Accuracy: {test_acc:.4f}")
+print(f"Training Accuracy: {train_acc:.4f}")
+print(f"Testing Accuracy: {test_acc:.4f}")
 
 # Save model
-model_path = "savedmodel.pth"
+os.makedirs("artifacts", exist_ok=True)
+model_path = "artifacts/savedmodel.pth"
 joblib.dump(model, model_path)
 
-print(f"📦 Model saved at {model_path}")
+print(f"Model saved at {model_path}")
 
-# Save metrics (extra improvement)
+# Save metrics
 with open("metrics.txt", "w") as f:
     f.write(f"Train Accuracy: {train_acc}\n")
-    f.write(f"Test Accuracy: {test_acc}\n")
-
-print("✅ Training pipeline completed successfully.")
-``

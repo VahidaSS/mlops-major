@@ -23,6 +23,7 @@ jobs:
       # Step 3: Install dependencies
       - name: Install Dependencies
         run: |
+          pip install --upgrade pip
           pip install -r requirements.txt
 
       # Step 4: Run training script
@@ -37,14 +38,14 @@ jobs:
 
       # Step 6: Upload model artifact (ADVANCED)
       - name: Upload Model Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trained-model
           path: savedmodel.pth
 
       # Step 7: Upload metrics file
       - name: Upload Metrics
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: metrics
           path: metrics.txt
