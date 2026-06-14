@@ -1,21 +1,20 @@
-FROM python:3.9-slim
+FROM python:3.14-slim
 
-# Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV MODEL_PATH=artifacts/savedmodel.pth
+ENV MODEL_PATH=savedmodel.pth
 
-# Set working directory
 WORKDIR /app
 
-# Copy files
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
-# Install dependencies
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Expose port
 EXPOSE 5000
 
-# Run app
 CMD ["python", "app.py"]

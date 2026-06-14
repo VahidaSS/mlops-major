@@ -1,95 +1,185 @@
 """
-app.py
-Flask application for serving ML model predictions
+Advanced Flask Application for Olivetti Faces Prediction
 """
 
 from flask import Flask, request, render_template, jsonify
 import numpy as np
-from PIL import Image
 import joblib
 import os
 import logging
+import cv2
 
-# Logging configuration (PRO LEVEL)
+# --------------------------------------------------
+# Logging Configuration
+# --------------------------------------------------
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+# --------------------------------------------------
+# Flask App
+# --------------------------------------------------
+
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", "artifacts/savedmodel.pth")
+MODEL_PATH = os.getenv("MODEL_PATH", "savedmodel.pth")
 
+# --------------------------------------------------
+# Face Detector
+# --------------------------------------------------
 
-# Load model safely
+face_detector = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
+
+# --------------------------------------------------
+# Load Model
+# --------------------------------------------------
+
 def load_model():
     if not os.path.exists(MODEL_PATH):
-        logging.error("Model file not found!")
-        raise FileNotFoundError("Model not found. Train model first.")
-    logging.info("Loading model...")
+        raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+
+    logging.info("Loading trained model...")
     return joblib.load(MODEL_PATH)
 
 
 try:
     model = load_model()
+    logging.info("Model loaded successfully")
+
 except Exception as e:
-    logging.error(f"Startup error: {e}")
+    logging.error(f"Startup Error: {e}")
     model = None
 
+# --------------------------------------------------
+# Home Route
+# --------------------------------------------------
 
-
-# Home route
 @app.route("/")
 def home():
     return render_template("index.html")
 
+# --------------------------------------------------
+# Health Check
+# --------------------------------------------------
 
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "running",
+        "model_loaded": model is not None
+    })
 
-# Prediction route
+# --------------------------------------------------
+# Prediction Route
+# --------------------------------------------------
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        # MODEL CHECK
         if model is None:
-            return jsonify({"error": "Model not loaded"}), 500
+            return jsonify({
+                "status": "error",
+                "message": "Model not loaded"
+            }), 500
 
         if "file" not in request.files:
-            return jsonify({"error": "No file uploaded"}), 400
+            return jsonify({
+                "status": "error",
+                "message": "No file uploaded"
+            }), 400
 
         file = request.files["file"]
-     
-        # ADD FILE TYPE
-        if not file.content_type or not file.content_type.startswith("image"):
-            return jsonify({"error": "Invalid file type. Upload an image."}), 400
 
         if file.filename == "":
-            return jsonify({"error": "Empty file name"}), 400
+            return jsonify({
+                "status": "error",
+                "message": "Empty filename"
+            }), 400
 
-        logging.info("Processing uploaded image")
+        if (
+            not file.content_type or
+            not file.content_type.startswith("image")
+        ):
+            return jsonify({
+                "status": "error",
+                "message": "Please upload a valid image"
+            }), 200
 
-        # Image preprocessing
-        img = Image.open(file).convert("L").resize((64, 64))
-        img_array = np.array(img).flatten() / 255.0
+        logging.info(f"Image received: {file.filename}")
 
-        logging.info("Running prediction")
+        # Convert image
+        image_bytes = np.frombuffer(file.read(), np.uint8)
+        image = cv2.imdecode(image_bytes, cv2.IMREAD_GRAYSCALE)
 
-        prediction = model.predict([img_array])[0]
+        if image is None:
+            return jsonify({
+                "status": "error",
+                "message": "Unable to read image"
+            }), 200
+
+        # Face detection
+        faces = face_detector.detectMultiScale(
+            image,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(30, 30)
+        )
+
+        if len(faces) == 0:
+            logging.warning("No face detected")
+            return jsonify({
+                "status": "error",
+                "message": "No face detected in image"
+            }), 200
+
+        logging.info(f"Faces detected: {len(faces)}")
+
+        # Take first detected face
+        x, y, w, h = faces[0]
+        face = image[y:y+h, x:x+w]
+        face = cv2.resize(face, (64, 64))
+
+        img_array = (face.flatten().astype(np.float32) / 255.0)
+
+        # Prediction
+        prediction = int(model.predict([img_array])[0])
+        confidence = None
+
+        if hasattr(model, "predict_proba"):
+            try:
+                probabilities = model.predict_proba([img_array])
+                confidence = round(float(np.max(probabilities)) * 100, 2)
+            except Exception:
+                pass
+
         logging.info(f"Prediction successful: {prediction}")
+
         return jsonify({
             "status": "success",
-            "prediction": int(prediction)
+            "prediction": prediction,
+            "confidence": confidence,
+            "faces_detected": int(len(faces))
         })
 
     except Exception as e:
-        logging.error(f"Prediction error: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        logging.error(f"Prediction Error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
-
-# Health check route 
-@app.route("/health")
-def health():
-    return jsonify({"status": "running"})
-
+# --------------------------------------------------
+# Run App
+# --------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    print(app.url_map)
+    app.run(
+        host="::",
+        port=5000,
+        debug=False
+    )

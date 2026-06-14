@@ -6,10 +6,6 @@ __pycache__/
 venv/
 env/
 
-# Model files
-*.pth
-*.pkl
-
 # Logs
 *.log
 
@@ -17,9 +13,15 @@ env/
 .DS_Store
 Thumbs.db
 
-# VS Code settings (optional)
+# VS Code
 .vscode/
 
-# Data files (optional safety)
+# Data files
 *.csv
 *.xlsx
+
+# Ignore pickle models (optional)
+*.pkl
+
+# Keep .pth model files tracked for assignment
+# *.pth
